@@ -1,0 +1,95 @@
+# =====================================================================
+#  Investments – Sistema multi-agente de trading intradiario (BYMA)
+#  Toda la configuración operativa vive acá. Los secretos van en .env
+# =====================================================================
+
+# paper = simulación (default, sin dinero real)
+# live  = dinero real. Requiere ALLOW_LIVE_TRADING=true en .env + confirmación escrita en la UI
+mode: paper
+
+# simulator = mercado sintético acelerado (1 tick = 1 minuto simulado)
+# yfinance  = precios reales con demora (~15-20 min) de Yahoo Finance (tickers .BA)
+# broker    = cotizaciones del broker conectado (tiempo real)
+data_feed: simulator
+
+# paper | iol | primary   (primary = API Matba Rofex/Primary vía pyRofex: reMarkets demo o ALyC)
+broker: paper
+
+capital_ars: 1000000          # capital total asignado al sistema
+tick_seconds: 2               # frecuencia del ciclo de decisión (en simulator: 1 tick = 1 vela de 1 min)
+allow_short: false            # en Argentina el short retail es complejo (caución de títulos): long-only por defecto
+
+market_hours:
+  timezone: America/Argentina/Buenos_Aires
+  open: "10:30"               # verificar horario vigente BYMA / plazo operado
+  close: "17:00"
+  no_entry_after_open_min: 30   # primeros minutos: subasta/alta volatilidad -> sin entradas nuevas
+  no_entry_before_close_min: 30 # últimos minutos: sin entradas nuevas
+  flatten_before_close_min: 10  # cierra todo antes del cierre (operativa 100% intradiaria)
+  auto_start: true              # el agente se enciende/apaga solo según horario y feriados AR
+  ignore_schedule_in_simulation: true  # permite probar el simulador fuera de horario
+
+portfolios:
+  conservative:
+    weight: 0.80
+    allowed_risk: [LOW, MEDIUM]
+    max_open_positions: 4
+  aggressive:
+    weight: 0.20
+    allowed_risk: [HIGH]
+    max_open_positions: 2
+
+risk:
+  risk_per_trade_pct: 0.005       # máx. 0.5% del capital de la cartera arriesgado por operación
+  max_position_pct_of_sleeve: 0.25
+  stop_atr_mult: 1.5              # stop loss = entrada - 1.5 * ATR(1m)
+  take_profit_rr: 2.0             # take profit = 2 x riesgo (relación beneficio/riesgo 2:1)
+  trailing_atr_mult: 1.2          # trailing stop una vez en ganancia
+  breakeven_at_r: 1.0             # al ganar 1R el stop pasa a precio de entrada + costos
+  max_holding_minutes: 5          # ventana corta 1-5 minutos: salida por tiempo
+  min_holding_minutes: 1
+  daily_max_loss_pct: 0.015       # circuit breaker: -1.5% del capital en el día => cierra todo y frena
+  daily_profit_lock_pct: 0.03     # +3% en el día => deja de abrir (protege ganancia)
+  max_drawdown_pct: 0.03          # caída desde el máximo intradiario de equity
+  max_consecutive_losses: 3
+  cooldown_minutes_after_losses: 15
+  symbol_cooldown_minutes: 10     # tras perder en un activo, no re-entrar en 10 min (anti-revancha)
+  max_trades_per_hour: 12
+  min_reward_cost_ratio: 2.0      # el objetivo bruto debe ser >= 2x los costos ida+vuelta
+  min_reward_risk: 1.5
+  max_spread_pct: 0.006
+  max_slippage_pct: 0.002
+  min_confidence: 0.70
+  max_total_exposure_pct: 0.85    # nunca más del 85% del capital invertido a la vez
+
+costs:
+  # ⚠️ CARGAR LAS COMISIONES REALES DE TU BROKER. Con comisiones retail típicas (~0.5% + IVA por lado)
+  # el scalping de 1-5 minutos es prácticamente inviable: el Analista Jefe rechazará casi todo (correcto).
+  # Default: perfil "bonificado/API" de bajo costo para intradiario.
+  commission_pct_per_side: 0.0010
+  vat_on_commission: 0.21
+  market_fees_pct_per_side: 0.0005
+
+mood:
+  chaotic_index_z: 3.0            # retorno del índice > 3 desvíos => anomalía
+  volatile_vol_ratio: 1.8         # vol corta / vol larga
+  chaotic_vol_ratio: 2.8
+  spread_widening_ratio: 2.0
+  min_breadth_for_longs: 0.35     # % de activos subiendo
+  regime_flip_limit: 4            # cambios de régimen en 10 ticks => mercado "difícil de diagnosticar"
+
+# Universo: panel líder BYMA + bonos soberanos (riesgo estático; el riesgo dinámico se mide en vivo)
+universe:
+  - {symbol: AL30,  static_risk: LOW,    sim_price: 70000,  sim_vol: 0.0009}
+  - {symbol: GD30,  static_risk: LOW,    sim_price: 74000,  sim_vol: 0.0008}
+  - {symbol: GGAL,  static_risk: MEDIUM, sim_price: 6500,   sim_vol: 0.0022}
+  - {symbol: YPFD,  static_risk: MEDIUM, sim_price: 42000,  sim_vol: 0.0020}
+  - {symbol: PAMP,  static_risk: MEDIUM, sim_price: 3800,   sim_vol: 0.0020}
+  - {symbol: BMA,   static_risk: MEDIUM, sim_price: 11000,  sim_vol: 0.0023}
+  - {symbol: TXAR,  static_risk: MEDIUM, sim_price: 900,    sim_vol: 0.0019}
+  - {symbol: ALUA,  static_risk: MEDIUM, sim_price: 850,    sim_vol: 0.0019}
+  - {symbol: TGSU2, static_risk: MEDIUM, sim_price: 6800,   sim_vol: 0.0021}
+  - {symbol: SUPV,  static_risk: HIGH,   sim_price: 2700,   sim_vol: 0.0038}
+  - {symbol: COME,  static_risk: HIGH,   sim_price: 190,    sim_vol: 0.0042}
+  - {symbol: EDN,   static_risk: HIGH,   sim_price: 2200,   sim_vol: 0.0036}
+  - {symbol: CRES,  static_risk: HIGH,   sim_price: 1500,   sim_vol: 0.0034}

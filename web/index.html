@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Investments · Multi-Agent Trading Desk</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◆</span>
+    <div>
+      <h1>Investments Desk</h1>
+      <small id="mode">—</small>
+    </div>
+  </div>
+  <div class="status">
+    <span id="state-badge" class="badge">—</span>
+    <span id="session-badge" class="badge muted">—</span>
+    <span id="clock" class="muted"></span>
+  </div>
+  <div class="controls">
+    <button id="btn-start" class="btn ok" data-action="start">▶ Iniciar</button>
+    <button id="btn-pause" class="btn" data-action="pause">⏸ Pausar</button>
+    <button id="btn-resume" class="btn" data-action="resume">⏵ Reanudar</button>
+    <button id="btn-stop" class="btn warn" data-action="stop">■ Detener</button>
+    <button id="btn-kill" class="btn danger" data-action="kill">⛔ KILL SWITCH</button>
+    <button id="btn-broker" class="btn ghost">🔌 Broker</button>
+  </div>
+</header>
+<div id="state-reason" class="reason-bar">—</div>
+
+<main class="grid">
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card span-8">
+    <div class="card-h"><h2>Ganancias / Pérdidas en vivo</h2><span class="muted" id="pnl-label"></span></div>
+    <div class="chart-wrap"><canvas id="pnl-chart"></canvas></div>
+  </section>
+
+  <section class="card span-4">
+    <div class="card-h"><h2>Ánimo del mercado</h2><span id="regime" class="badge">—</span></div>
+    <div class="gauge"><div class="gauge-bar"><div id="mood-needle"></div></div>
+      <div class="gauge-labels"><span>Pánico</span><span>Neutral</span><span>Euforia</span></div></div>
+    <p id="mood-reason" class="small"></p>
+    <dl class="kv" id="mood-kv"></dl>
+    <ul id="anomalies" class="anomalies"></ul>
+  </section>
+
+  <section class="card span-4">
+    <div class="card-h"><h2>Control de riesgo (Analista Jefe)</h2></div>
+    <div id="risk-meters"></div>
+    <dl class="kv" id="risk-kv"></dl>
+  </section>
+
+  <section class="card span-4">
+    <div class="card-h"><h2>Carteras (80% bajo/medio · 20% alto)</h2></div>
+    <div class="chart-wrap small-chart"><canvas id="sleeve-chart"></canvas></div>
+    <div id="sleeves"></div>
+  </section>
+
+  <section class="card span-4">
+    <div class="card-h"><h2>Agentes</h2></div>
+    <div id="agents"></div>
+  </section>
+
+  <section class="card span-12">
+    <div class="card-h"><h2>Inversiones activas</h2><span class="muted" id="pos-count"></span></div>
+    <div class="table-wrap"><table id="positions"><thead><tr>
+      <th>Activo</th><th>Cartera</th><th>Riesgo</th><th>Cant.</th><th>Entrada</th><th>Último</th>
+      <th>Stop</th><th>Objetivo</th><th>R</th><th>P&amp;L</th><th>Min</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card span-7">
+    <div class="card-h"><h2>Riesgo por activo (ventana 1-5 min)</h2></div>
+    <div class="table-wrap tall"><table id="assessments"><thead><tr>
+      <th>Activo</th><th>Precio</th><th>Riesgo</th><th>Score</th><th>Vol 1m%</th><th>ATR%</th>
+      <th>Spread%</th><th>RSI</th><th>Tend.</th><th>Señal</th><th>Conf.</th><th>Edge/Costo</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card span-5">
+    <div class="card-h"><h2>Decisiones del Analista Jefe</h2></div>
+    <div id="decisions" class="feed tall"></div>
+  </section>
+
+  <section class="card span-7">
+    <div class="card-h"><h2>Operaciones cerradas</h2></div>
+    <div class="table-wrap tall"><table id="trades"><thead><tr>
+      <th>Activo</th><th>Cartera</th><th>Cant.</th><th>Entrada</th><th>Salida</th><th>Motivo</th>
+      <th>Min</th><th>Costos</th><th>Neto</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card span-5">
+    <div class="card-h"><h2>Actividad de agentes</h2></div>
+    <div id="activity" class="feed tall"></div>
+  </section>
+</main>
+
+<footer class="foot">
+  ⚠️ Software educativo. No constituye asesoramiento financiero. Operar implica riesgo de pérdida de capital.
+  Probá siempre en modo PAPER antes de usar dinero real.
+</footer>
+
+<!-- Modal broker -->
+<div id="broker-modal" class="modal hidden">
+  <div class="modal-box">
+    <div class="card-h"><h2>Analista de Conexión a Mercados</h2><button class="btn ghost" id="close-modal">✕</button></div>
+    <p class="small" id="dma-note"></p>
+    <ol id="plan" class="small"></ol>
+    <div id="broker-list"></div>
+    <form id="broker-form" class="hidden">
+      <h3 id="form-title"></h3>
+      <div id="form-fields"></div>
+      <div id="live-block" class="hidden">
+        <p class="danger-text">Este broker opera con DINERO REAL. Escribí la frase de confirmación:</p>
+        <code id="live-phrase"></code>
+        <input id="live-confirm" placeholder="Frase de confirmación" autocomplete="off" />
+      </div>
+      <p class="small muted">Las credenciales se usan sólo en memoria para esta sesión (nunca se guardan en disco ni en el repositorio). También podés definirlas en <code>.env</code>.</p>
+      <button type="submit" class="btn ok">Validar y conectar</button>
+      <span id="form-msg" class="small"></span>
+    </form>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
