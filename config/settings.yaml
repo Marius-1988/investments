@@ -33,20 +33,22 @@ portfolios:
   conservative:
     weight: 0.80
     allowed_risk: [LOW, MEDIUM]
-    max_open_positions: 4
+    max_open_positions: 2
   aggressive:
     weight: 0.20
     allowed_risk: [HIGH]
-    max_open_positions: 2
+    max_open_positions: 1
 
 risk:
   risk_per_trade_pct: 0.005       # máx. 0.5% del capital de la cartera arriesgado por operación
   max_position_pct_of_sleeve: 0.25
-  stop_atr_mult: 1.5              # stop loss = entrada - 1.5 * ATR(1m)
+  stop_atr_mult: 2.5              # stop loss = entrada - 2.5 * ATR (mayor holgura para ruido de mercado)
   take_profit_rr: 2.0             # take profit = 2 x riesgo (relación beneficio/riesgo 2:1)
-  trailing_atr_mult: 1.2          # trailing stop una vez en ganancia
+  trailing_atr_mult: 2.0          # trailing stop con holgura de 2.0 ATR
   breakeven_at_r: 1.0             # al ganar 1R el stop pasa a precio de entrada + costos
-  max_holding_minutes: 60          # ventana corta 15-60 minutos: salida por tiempo
+  trailing_activation_r: 1.5      # trailing stop solo se activa tras alcanzar +1.5R de ganancia
+  min_target_pct: 0.015           # objetivo mínimo de beneficio bruto del 1.5%
+  max_holding_minutes: 60          # ventana 15-60 minutos: salida por tiempo
   min_holding_minutes: 15
   daily_max_loss_pct: 0.015       # circuit breaker: -1.5% del capital en el día => cierra todo y frena
   daily_profit_lock_pct: 0.03     # +3% en el día => deja de abrir (protege ganancia)
@@ -54,8 +56,8 @@ risk:
   max_consecutive_losses: 3
   cooldown_minutes_after_losses: 15
   symbol_cooldown_minutes: 10     # tras perder en un activo, no re-entrar en 10 min (anti-revancha)
-  max_trades_per_hour: 5
-  min_reward_cost_ratio: 2.0      # el objetivo bruto debe ser >= 2x los costos ida+vuelta
+  max_trades_per_hour: 3          # máx 3 operaciones por hora (freno estricto a sobre-operar)
+  min_reward_cost_ratio: 3.5      # el objetivo bruto debe ser >= 3.5x los costos ida+vuelta
   min_reward_risk: 1.5
   max_spread_pct: 0.006
   max_slippage_pct: 0.002
@@ -78,18 +80,18 @@ mood:
   min_breadth_for_longs: 0.35     # % de activos subiendo
   regime_flip_limit: 4            # cambios de régimen en 10 ticks => mercado "difícil de diagnosticar"
 
-# Universo: panel líder BYMA + bonos soberanos (riesgo estático; el riesgo dinámico se mide en vivo)
+# Universo: panel líder BYMA + bonos soberanos con sector asignado para filtro anti-correlación
 universe:
-  - {symbol: AL30,  static_risk: LOW,    sim_price: 70000,  sim_vol: 0.0009}
-  - {symbol: GD30,  static_risk: LOW,    sim_price: 74000,  sim_vol: 0.0008}
-  - {symbol: GGAL,  static_risk: MEDIUM, sim_price: 6500,   sim_vol: 0.0022}
-  - {symbol: YPFD,  static_risk: MEDIUM, sim_price: 42000,  sim_vol: 0.0020}
-  - {symbol: PAMP,  static_risk: MEDIUM, sim_price: 3800,   sim_vol: 0.0020}
-  - {symbol: BMA,   static_risk: MEDIUM, sim_price: 11000,  sim_vol: 0.0023}
-  - {symbol: TXAR,  static_risk: MEDIUM, sim_price: 900,    sim_vol: 0.0019}
-  - {symbol: ALUA,  static_risk: MEDIUM, sim_price: 850,    sim_vol: 0.0019}
-  - {symbol: TGSU2, static_risk: MEDIUM, sim_price: 6800,   sim_vol: 0.0021}
-  - {symbol: SUPV,  static_risk: HIGH,   sim_price: 2700,   sim_vol: 0.0038}
-  - {symbol: COME,  static_risk: HIGH,   sim_price: 190,    sim_vol: 0.0042}
-  - {symbol: EDN,   static_risk: HIGH,   sim_price: 2200,   sim_vol: 0.0036}
-  - {symbol: CRES,  static_risk: HIGH,   sim_price: 1500,   sim_vol: 0.0034}
+  - {symbol: AL30,  sector: BONOS,       static_risk: LOW,    sim_price: 70000,  sim_vol: 0.0009}
+  - {symbol: GD30,  sector: BONOS,       static_risk: LOW,    sim_price: 74000,  sim_vol: 0.0008}
+  - {symbol: GGAL,  sector: BANCOS,      static_risk: MEDIUM, sim_price: 6500,   sim_vol: 0.0022}
+  - {symbol: YPFD,  sector: ENERGIA,     static_risk: MEDIUM, sim_price: 42000,  sim_vol: 0.0020}
+  - {symbol: PAMP,  sector: ENERGIA,     static_risk: MEDIUM, sim_price: 3800,   sim_vol: 0.0020}
+  - {symbol: BMA,   sector: BANCOS,      static_risk: MEDIUM, sim_price: 11000,  sim_vol: 0.0023}
+  - {symbol: TXAR,  sector: MATERIALES,  static_risk: MEDIUM, sim_price: 900,    sim_vol: 0.0019}
+  - {symbol: ALUA,  sector: MATERIALES,  static_risk: MEDIUM, sim_price: 850,    sim_vol: 0.0019}
+  - {symbol: TGSU2, sector: ENERGIA,     static_risk: MEDIUM, sim_price: 6800,   sim_vol: 0.0021}
+  - {symbol: SUPV,  sector: BANCOS,      static_risk: HIGH,   sim_price: 2700,   sim_vol: 0.0038}
+  - {symbol: COME,  sector: HOLDING,     static_risk: HIGH,   sim_price: 190,    sim_vol: 0.0042}
+  - {symbol: EDN,   sector: UTILITIES,   static_risk: HIGH,   sim_price: 2200,   sim_vol: 0.0036}
+  - {symbol: CRES,  sector: AGRO_INMOB,  static_risk: HIGH,   sim_price: 1500,   sim_vol: 0.0034}

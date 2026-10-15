@@ -31,31 +31,33 @@ class SleeveCfg(BaseModel):
 
 
 class Portfolios(BaseModel):
-    conservative: SleeveCfg = SleeveCfg(weight=0.8, allowed_risk=["LOW", "MEDIUM"], max_open_positions=4)
-    aggressive: SleeveCfg = SleeveCfg(weight=0.2, allowed_risk=["HIGH"], max_open_positions=2)
+    conservative: SleeveCfg = SleeveCfg(weight=0.8, allowed_risk=["LOW", "MEDIUM"], max_open_positions=2)
+    aggressive: SleeveCfg = SleeveCfg(weight=0.2, allowed_risk=["HIGH"], max_open_positions=1)
 
 
 class RiskCfg(BaseModel):
     risk_per_trade_pct: float = 0.005
     max_position_pct_of_sleeve: float = 0.25
-    stop_atr_mult: float = 1.5
+    stop_atr_mult: float = 2.5
     take_profit_rr: float = 2.0
-    trailing_atr_mult: float = 1.2
+    trailing_atr_mult: float = 2.0
     breakeven_at_r: float = 1.0
-    max_holding_minutes: int = 5
-    min_holding_minutes: int = 1
+    trailing_activation_r: float = 1.5
+    min_target_pct: float = 0.015
+    max_holding_minutes: int = 60
+    min_holding_minutes: int = 15
     daily_max_loss_pct: float = 0.015
     daily_profit_lock_pct: float = 0.03
     max_drawdown_pct: float = 0.03
     max_consecutive_losses: int = 3
     cooldown_minutes_after_losses: int = 15
     symbol_cooldown_minutes: int = 10
-    max_trades_per_hour: int = 12
-    min_reward_cost_ratio: float = 2.0
+    max_trades_per_hour: int = 3
+    min_reward_cost_ratio: float = 3.5
     min_reward_risk: float = 1.5
     max_spread_pct: float = 0.006
     max_slippage_pct: float = 0.002
-    min_confidence: float = 0.60
+    min_confidence: float = 0.70
     max_total_exposure_pct: float = 0.85
 
 
@@ -87,6 +89,7 @@ class MoodCfg(BaseModel):
 
 class Instrument(BaseModel):
     symbol: str
+    sector: str = "GENERAL"
     static_risk: Literal["LOW", "MEDIUM", "HIGH"] = "MEDIUM"
     sim_price: float = 1000.0
     sim_vol: float = 0.002

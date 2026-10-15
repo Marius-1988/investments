@@ -85,14 +85,18 @@ class ShortTermRiskAnalyst(Agent):
         signal: Optional[Signal] = None
         entry = q.ask
         stop = entry - r.stop_atr_mult * a
-        target = entry + r.take_profit_rr * (entry - stop)
+        min_target_pct = getattr(r, "min_target_pct", 0.015)
+        min_target_dist = entry * min_target_pct
+        calc_target_dist = r.take_profit_rr * (entry - stop)
+        target_dist = max(min_target_dist, calc_target_dist)
+        target = entry + target_dist
         target_pct = (target - entry) / entry
         cost = self.settings.costs.round_trip
         edge_vs_cost = target_pct / cost if cost else 99
         # minutos esperados para alcanzar el objetivo (paseo aleatorio): (distancia/ATR)^2, acotado a la ventana
         horizon = int(_clamp(round(((target - entry) / a) ** 2 / 2), r.min_holding_minutes, r.max_holding_minutes))
 
-        if confidence >= 0.5 and ef > es and mom3 > 0:
+        if confidence >= r.min_confidence and ef > es and mom3 > 0 and target_pct >= min_target_pct:
             signal = Signal(symbol, Side.BUY, entry, stop, target, horizon, round(confidence, 3), level,
                             round(risk_score, 1), a, spread, rationale,
                             {"rsi": rsi_v, "vol_1m": vol, "vol_ratio": vol_ratio, "atr_pct": atr_pct,

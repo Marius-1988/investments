@@ -73,10 +73,11 @@ class ExecutionAnalyst(Agent):
         r = self.settings.risk
         pos.last_price = quote.bid                    # valuación a precio de liquidación
         pos.max_favorable = max(pos.max_favorable, quote.bid)
-        breakeven = pos.entry_price * (1 + self.settings.costs.round_trip)
+        breakeven = pos.entry_price * (1 + self.settings.costs.round_trip * 1.15)
         if pos.r_multiple >= r.breakeven_at_r:
             pos.stop = max(pos.stop, breakeven)
-        if pos.r_multiple >= 1.0:
+        trailing_act = getattr(r, "trailing_activation_r", 1.5)
+        if pos.r_multiple >= trailing_act:
             pos.stop = max(pos.stop, pos.max_favorable - r.trailing_atr_mult * pos.atr)
         if tighten:
             # protección: stop a la mitad de la distancia o break-even si ya está en ganancia

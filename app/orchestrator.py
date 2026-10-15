@@ -228,7 +228,8 @@ class TradingSystem:
                 if not prop:
                     continue
                 d = self.chief.validate(prop, minute=minute, session=session, gate=gate, equity=self.equity,
-                                        exposure=self.exposure, entries_enabled=self.state == SystemState.RUNNING)
+                                        exposure=self.exposure, entries_enabled=self.state == SystemState.RUNNING,
+                                        open_positions=list(self.positions.values()))
                 rec = {**to_dict(d), "sleeve": prop.sleeve, "notes": prop.notes, "confidence": sig.confidence,
                        "risk_level": sig.risk_level.value}
                 self.decisions.appendleft(rec)

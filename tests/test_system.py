@@ -8,7 +8,7 @@ from app.config import load_settings
 from app.agents.chief import ChiefMarketAnalyst
 from app.agents.portfolio_manager import MultiPortfolioManager
 from app.market_hours import MarketCalendar
-from app.models import OrderProposal, RiskLevel, Side, Signal
+from app.models import OrderProposal, RiskLevel, Side, Signal, Position, Quote
 from app.orchestrator import TradingSystem
 
 TZ = ZoneInfo("America/Argentina/Buenos_Aires")
@@ -91,6 +91,42 @@ def test_circuit_breaker_daily_loss():
     c = _chief_ready()
     gate = c.risk_gate(S.capital_ars * (1 - S.risk.daily_max_loss_pct - 0.001))
     assert gate["halt"] and gate["flatten"]
+
+
+def test_chief_rejects_sector_correlation():
+    c = _chief_ready()
+    pos_ggal = Position(symbol="GGAL", side=Side.BUY, quantity=10, entry_price=1000.0,
+                        stop=987.5, target=1025.0, initial_stop=987.5, sleeve="conservative",
+                        risk_level=RiskLevel.MEDIUM, atr=5.0, opened_minute=10, entry_fees=10.0,
+                        last_price=1000.0, max_favorable=1000.0)
+    p_bma = OrderProposal(sig(symbol="BMA", atr=5.0), "conservative", 10, 10000, 50)
+    d = _validate(c, p_bma, open_positions=[pos_ggal])
+    assert not d.approved
+    assert any("filtro anti-correlación" in r for r in d.reasons)
+
+
+def test_execution_trailing_and_breakeven():
+    from app.brokers.paper import PaperBroker
+    from app.agents.execution import ExecutionAnalyst
+    broker = PaperBroker(S.costs, S.capital_ars)
+    exec_analyst = ExecutionAnalyst(S, noop, broker)
+
+    pos = Position(symbol="GGAL", side=Side.BUY, quantity=10, entry_price=1000.0,
+                   stop=975.0, target=1050.0, initial_stop=975.0, sleeve="conservative",
+                   risk_level=RiskLevel.MEDIUM, atr=10.0, opened_minute=10, entry_fees=10.0,
+                   last_price=1000.0, max_favorable=1000.0)
+
+    # precio sube a 1025 (+1.0R): stop se mueve a breakeven (+15% sobre costos round-trip)
+    # pero trailing stop NO debe activarse aún porque trailing_activation_r = 1.5
+    q1 = Quote(symbol="GGAL", bid=1025.0, ask=1026.0, last=1025.0, volume=100, ts=1000.0)
+    exec_analyst.update_position(pos, q1)
+    expected_breakeven = 1000.0 * (1 + S.costs.round_trip * 1.15)
+    assert pos.stop == pytest.approx(expected_breakeven)
+
+    # precio sube a 1040 (+1.6R >= 1.5R): se activa el trailing stop: max_favorable - 2.0 * atr = 1040 - 20 = 1020
+    q2 = Quote(symbol="GGAL", bid=1040.0, ask=1041.0, last=1040.0, volume=100, ts=1010.0)
+    exec_analyst.update_position(pos, q2)
+    assert pos.stop == pytest.approx(1020.0)
 
 
 # ---------------------------------------------------------------- integración (simulador)

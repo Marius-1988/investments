@@ -12,7 +12,7 @@ from typing import Deque, Dict, List, Optional
 from ..indicators import returns, stdev, zscore
 from ..market_hours import MarketCalendar, SessionStatus
 from ..market_state import MarketState
-from ..models import Decision, OrderProposal, Regime, Side, Trade
+from ..models import Decision, OrderProposal, Position, Regime, Side, Trade
 from .base import Agent
 
 CONFIRM_SIZE = {Regime.CALM: 1.0, Regime.TRENDING_UP: 1.0, Regime.VOLATILE: 0.5}
@@ -50,6 +50,7 @@ class ChiefMarketAnalyst(Agent):
         self.regime_hist: Deque[Regime] = deque(maxlen=10)
         self.mood: dict = {"regime": Regime.WARMUP.value, "score": 0, "entries_allowed": False,
                            "size_multiplier": 0, "anomalies": [], "reason": "Calentando indicadores"}
+        self.symbol_sectors: Dict[str, str] = {i.symbol: getattr(i, "sector", "GENERAL") for i in settings.universe}
 
     # ------------------------------------------------------------------ día
     def reset_day(self, equity: float) -> None:
@@ -172,7 +173,8 @@ class ChiefMarketAnalyst(Agent):
 
     # ------------------------------------------------------------------ validación de propuestas
     def validate(self, p: OrderProposal, *, minute: int, session: SessionStatus, gate: dict,
-                 equity: float, exposure: float, entries_enabled: bool) -> Decision:
+                 equity: float, exposure: float, entries_enabled: bool,
+                 open_positions: Optional[List[Position]] = None) -> Decision:
         r, s = self.settings.risk, p.signal
         fails: List[str] = []
         if not entries_enabled:
@@ -190,6 +192,13 @@ class ChiefMarketAnalyst(Agent):
         recent = [t for t in self.day.trade_minutes if minute - t < 60]
         if len(recent) >= r.max_trades_per_hour:
             fails.append(f"Límite de {r.max_trades_per_hour} operaciones/hora (evita sobre-operar)")
+        # Filtro de correlación sectorial (máx 1 posición simultánea por sector)
+        sym_sec = self.symbol_sectors.get(s.symbol, "GENERAL")
+        if open_positions and sym_sec != "GENERAL":
+            for op in open_positions:
+                if op.symbol != s.symbol and self.symbol_sectors.get(op.symbol, "GENERAL") == sym_sec:
+                    fails.append(f"Sector '{sym_sec}' ya tiene posición activa en {op.symbol} (filtro anti-correlación)")
+                    break
         if not self.mood.get("entries_allowed"):
             fails.append(f"Ánimo de mercado: {self.mood.get('reason')}")
         if s.side == Side.SELL and not self.settings.allow_short:
@@ -198,6 +207,9 @@ class ChiefMarketAnalyst(Agent):
             fails.append(f"Confianza {s.confidence:.2f} < {r.min_confidence:.2f}")
         if s.reward_risk < r.min_reward_risk:
             fails.append(f"Beneficio/riesgo {s.reward_risk:.2f} < {r.min_reward_risk}")
+        min_target = getattr(r, "min_target_pct", 0.015)
+        if s.target_pct < min_target:
+            fails.append(f"Objetivo {s.target_pct:.2%} < {min_target:.2%} mínimo requerido")
         cost = self.settings.costs.round_trip
         if s.target_pct < r.min_reward_cost_ratio * cost:
             fails.append(f"Objetivo {s.target_pct:.2%} no cubre {r.min_reward_cost_ratio}x costos ({cost:.2%})")
