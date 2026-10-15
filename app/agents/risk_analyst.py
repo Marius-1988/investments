@@ -28,6 +28,10 @@ class ShortTermRiskAnalyst(Agent):
 
     def __init__(self, settings, log_fn, static_risk: Dict[str, str]):
         super().__init__(settings, log_fn)
+        min_m, max_m = settings.risk.min_holding_minutes, settings.risk.max_holding_minutes
+        self.title = f"Analista de Riesgo ({min_m}-{max_m} min)"
+        self.mission = (f"Medir el riesgo de cada activo en ventana de {min_m} a {max_m} minutos, clasificarlo (LOW/MEDIUM/HIGH) "
+                        "y proponer sólo setups con ventaja estadística después de costos.")
         self.static_risk = {s: RiskLevel(r) for s, r in static_risk.items()}
         self.last_assessments: List[dict] = []
 

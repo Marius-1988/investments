@@ -88,6 +88,10 @@ function render(s) {
 
   // Risk
   const r = s.risk, g = r.gate || {}, L = r.limits;
+  const minHold = L.min_holding_minutes || 1;
+  const maxHold = L.max_holding_minutes || 5;
+  const titleEl = $("#assessments-title");
+  if (titleEl) titleEl.textContent = `Riesgo por activo (ventana ${minHold}-${maxHold} min)`;
   const meter = (label, used, txt) => {
     const u = Math.max(0, Math.min(1, used || 0)); const color = u > .8 ? "var(--bad)" : u > .5 ? "var(--warn)" : "var(--ok)";
     return `<div class="meter"><div class="lbl"><span>${label}</span><span>${txt}</span></div><div class="bar"><div class="fill" style="width:${u * 100}%;background:${color}"></div></div></div>`;
