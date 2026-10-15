@@ -46,15 +46,15 @@ risk:
   take_profit_rr: 2.0             # take profit = 2 x riesgo (relación beneficio/riesgo 2:1)
   trailing_atr_mult: 1.2          # trailing stop una vez en ganancia
   breakeven_at_r: 1.0             # al ganar 1R el stop pasa a precio de entrada + costos
-  max_holding_minutes: 5          # ventana corta 1-5 minutos: salida por tiempo
-  min_holding_minutes: 1
+  max_holding_minutes: 60          # ventana corta 1-5 minutos: salida por tiempo
+  min_holding_minutes: 15
   daily_max_loss_pct: 0.015       # circuit breaker: -1.5% del capital en el día => cierra todo y frena
   daily_profit_lock_pct: 0.03     # +3% en el día => deja de abrir (protege ganancia)
   max_drawdown_pct: 0.03          # caída desde el máximo intradiario de equity
   max_consecutive_losses: 3
   cooldown_minutes_after_losses: 15
   symbol_cooldown_minutes: 10     # tras perder en un activo, no re-entrar en 10 min (anti-revancha)
-  max_trades_per_hour: 12
+  max_trades_per_hour: 5
   min_reward_cost_ratio: 2.0      # el objetivo bruto debe ser >= 2x los costos ida+vuelta
   min_reward_risk: 1.5
   max_spread_pct: 0.006
