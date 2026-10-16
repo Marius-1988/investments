@@ -54,12 +54,23 @@ function render(s) {
 
   // KPIs
   const k = s.kpis;
+  const dayPnl = k.day_pnl ?? k.pnl;
+  const dayPnlPct = k.day_pnl_pct ?? k.pnl_pct;
+  const totPnl = k.total_pnl ?? (k.equity - s.capital);
+  const totPnlPct = k.total_pnl_pct ?? (s.capital ? (k.equity / s.capital - 1) : 0);
   const kp = [
-    ["Equity", money(k.equity), ""], ["P&L día", money(k.pnl), cls(k.pnl)], ["P&L %", pct(k.pnl_pct, 3), cls(k.pnl)],
-    ["Realizado", money(k.realized), cls(k.realized)], ["No realizado", money(k.unrealized), cls(k.unrealized)],
-    ["Operaciones", k.trades, ""], ["Win rate", k.win_rate == null ? "—" : pct(k.win_rate, 1), ""],
+    ["Equity", money(k.equity), ""],
+    ["P&L Hoy (Día)", money(dayPnl), cls(dayPnl)],
+    ["P&L Hoy %", pct(dayPnlPct, 2), cls(dayPnl)],
+    ["P&L Acumulado", money(totPnl), cls(totPnl)],
+    ["P&L Acum. %", pct(totPnlPct, 2), cls(totPnl)],
+    ["Realizado", money(k.realized), cls(k.realized)],
+    ["No realizado", money(k.unrealized), cls(k.unrealized)],
+    ["Operaciones", k.trades, ""],
+    ["Win rate", k.win_rate == null ? "—" : pct(k.win_rate, 1), ""],
     ["Profit factor", k.profit_factor == null ? "—" : (k.profit_factor >= 999 ? "∞" : fmt(k.profit_factor)), k.profit_factor >= 1 ? "pos" : k.profit_factor == null ? "" : "neg"],
-    ["Exposición", pct(k.exposure_pct, 1), ""], ["Costos pagados", money(k.fees), "neg"],
+    ["Exposición", pct(k.exposure_pct, 1), ""],
+    ["Costos pagados", money(k.fees), "neg"],
   ];
   $("#kpis").innerHTML = kp.map(([l, v, c]) => `<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join("");
 

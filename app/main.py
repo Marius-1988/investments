@@ -63,7 +63,7 @@ async def state():
 @app.post("/api/control/{action}")
 async def control(action: str):
     actions = {"start": system.start, "pause": system.pause, "resume": system.resume,
-               "stop": system.stop, "kill": system.kill}
+               "stop": system.stop, "kill": system.kill, "reset": system.reset}
     if action not in actions:
         raise HTTPException(404, "Acción desconocida")
     await actions[action]()

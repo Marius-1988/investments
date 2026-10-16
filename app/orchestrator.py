@@ -149,6 +149,26 @@ class TradingSystem:
             self.manual_stop_date = self.calendar.now().date()
             self._log("chief", "error", "KILL SWITCH activado: posiciones cerradas y operación bloqueada por hoy", {})
 
+    async def reset(self) -> None:
+        async with self.lock:
+            if self.state in (SystemState.RUNNING, SystemState.PAUSED):
+                await self._flatten_all("Reinicio del sistema a $1.000.000", urgent=True)
+            self.trades.clear()
+            self.positions.clear()
+            self.activity.clear()
+            self.decisions.clear()
+            self.equity_curve.clear()
+            self.manual_stop_date = None
+            if not self.broker.is_live:
+                from .brokers.paper import PaperBroker
+                self.broker = PaperBroker(self.settings.costs, self.settings.capital_ars)
+                self.execution.broker = self.broker
+            self.chief.reset_day(self.settings.capital_ars)
+            self.state = SystemState.STOPPED
+            self.state_reason = "Reiniciado a cero ($1.000.000)"
+            self._record_equity()
+            self._log("chief", "info", f"Sistema reiniciado a cero con capital base ${self.settings.capital_ars:,.0f}", {})
+
     async def _flatten_all(self, reason: str, urgent: bool) -> None:
         for pos in list(self.positions.values()):
             q = self.market.quotes.get(pos.symbol)
@@ -246,8 +266,10 @@ class TradingSystem:
         self._record_equity()
 
     def _record_equity(self) -> None:
+        day_pnl = round(self.chief.day.realized + self.unrealized, 2)
+        tot_pnl = round(self.equity - self.settings.capital_ars, 2)
         self.equity_curve.append({"ts": time.time(), "equity": round(self.equity, 2),
-                                  "pnl": round(self.equity - self.settings.capital_ars, 2),
+                                  "pnl": day_pnl, "day_pnl": day_pnl, "total_pnl": tot_pnl,
                                   "realized": round(self.realized, 2), "unrealized": round(self.unrealized, 2)})
 
     # ------------------------------------------------------------------ scheduler (auto on/off)
@@ -323,6 +345,10 @@ class TradingSystem:
         gw, gl = sum(t.net_pnl for t in wins), -sum(t.net_pnl for t in losses)
         r = self.settings.risk
         d = self.chief.day
+        day_pnl = d.realized + self.unrealized
+        day_pnl_pct = (day_pnl / d.start_equity) if d.start_equity else 0.0
+        tot_pnl = self.equity - self.settings.capital_ars
+        tot_pnl_pct = (self.equity / self.settings.capital_ars - 1) if self.settings.capital_ars else 0.0
         curve = list(self.equity_curve)
         return {
             "ts": time.time(),
@@ -331,8 +357,13 @@ class TradingSystem:
             "session": self.last_session or self.chief.session(self.simulated).to_dict(),
             "capital": self.settings.capital_ars,
             "kpis": {
-                "equity": round(self.equity, 2), "pnl": round(self.equity - self.settings.capital_ars, 2),
-                "pnl_pct": (self.equity / self.settings.capital_ars - 1),
+                "equity": round(self.equity, 2),
+                "day_pnl": round(day_pnl, 2),
+                "day_pnl_pct": day_pnl_pct,
+                "total_pnl": round(tot_pnl, 2),
+                "total_pnl_pct": tot_pnl_pct,
+                "pnl": round(day_pnl, 2),
+                "pnl_pct": day_pnl_pct,
                 "realized": round(self.realized, 2), "unrealized": round(self.unrealized, 2),
                 "trades": len(trades), "win_rate": len(wins) / len(trades) if trades else None,
                 "profit_factor": (gw / gl) if gl > 0 else (999.0 if wins else None),

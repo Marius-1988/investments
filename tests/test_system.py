@@ -147,3 +147,21 @@ def test_simulation_runs_and_respects_limits():
     assert snap["kpis"]["exposure_pct"] <= S.risk.max_total_exposure_pct + 1e-6
     # la pérdida diaria nunca excede el límite + una operación de margen
     assert snap["kpis"]["pnl_pct"] > -(S.risk.daily_max_loss_pct + 0.01)
+
+
+def test_system_reset():
+    async def run():
+        sysm = TradingSystem(S)
+        await sysm.start()
+        sysm.loop_task.cancel()
+        for _ in range(50):
+            await sysm.tick()
+        await sysm.reset()
+        return sysm
+    s = asyncio.run(run())
+    snap = s.snapshot()
+    assert snap["kpis"]["equity"] == pytest.approx(S.capital_ars)
+    assert snap["kpis"]["day_pnl"] == pytest.approx(0.0)
+    assert snap["kpis"]["total_pnl"] == pytest.approx(0.0)
+    assert snap["kpis"]["trades"] == 0
+    assert len(s.positions) == 0
